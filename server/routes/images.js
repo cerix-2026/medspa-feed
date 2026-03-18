@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 const db = require('../db');
 
 const storage = multer.diskStorage({
-  destination: 'server/uploads/images/',
+  destination: path.join(__dirname, '..', 'uploads', 'images'),
   filename: (req, file, cb) => cb(null, uuid() + path.extname(file.originalname))
 });
 const upload = multer({
@@ -25,28 +25,38 @@ router.get('/', auth(), async (req, res) => {
   res.json(images);
 });
 
-router.post('/', auth(['admin', 'editor']), upload.array('images', 20), async (req, res) => {
-  if (!req.files?.length) return res.status(400).json({ error: 'Ingen filer' });
-  const { tags, category, isBrandDna } = req.body;
+router.post('/', auth(['admin', 'editor']), (req, res, next) => {
+  upload.array('images', 20)(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Upload fejl' });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    if (!req.files?.length) return res.status(400).json({ error: 'Ingen filer' });
+    const { tags, category, isBrandDna } = req.body;
 
-  const newImages = [];
-  for (const file of req.files) {
-    const img = {
-      id: uuid(),
-      filename: file.filename,
-      originalName: file.originalname,
-      url: '/uploads/images/' + file.filename,
-      size: file.size,
-      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      category: category || 'general',
-      isBrandDna: isBrandDna === 'true',
-      uploadedBy: req.user.name,
-      createdAt: new Date().toISOString()
-    };
-    await db.images.create(img);
-    newImages.push(img);
+    const newImages = [];
+    for (const file of req.files) {
+      const img = {
+        id: uuid(),
+        filename: file.filename,
+        originalName: file.originalname,
+        url: '/uploads/images/' + file.filename,
+        size: file.size,
+        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        category: category || 'general',
+        isBrandDna: isBrandDna === 'true',
+        uploadedBy: req.user.name,
+        createdAt: new Date().toISOString()
+      };
+      await db.images.create(img);
+      newImages.push(img);
+    }
+    res.json(newImages);
+  } catch (err) {
+    console.error('Image upload error:', err);
+    res.status(500).json({ error: err.message || 'Upload fejl' });
   }
-  res.json(newImages);
 });
 
 router.put('/:id', auth(['admin', 'editor']), async (req, res) => {
@@ -59,7 +69,7 @@ router.put('/:id', auth(['admin', 'editor']), async (req, res) => {
 router.delete('/:id', auth(['admin', 'editor']), async (req, res) => {
   const filename = await db.images.delete(req.params.id);
   if (filename) {
-    try { fs.unlinkSync('server/uploads/images/' + filename); } catch {}
+    try { fs.unlinkSync(path.join(__dirname, '..', 'uploads', 'images', filename)); } catch {}
   }
   res.json({ ok: true });
 });

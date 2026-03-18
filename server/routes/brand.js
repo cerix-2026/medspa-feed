@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const db = require('../db');
 
 const storage = multer.diskStorage({
-  destination: 'server/uploads/brand/',
+  destination: path.join(__dirname, '..', 'uploads', 'brand'),
   filename: (req, file, cb) => cb(null, 'logo' + path.extname(file.originalname))
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });

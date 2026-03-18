@@ -7,8 +7,12 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Ensure data directories exist
-['server/data', 'server/uploads/images', 'server/uploads/brand'].forEach(dir => {
+// Ensure data directories exist (use absolute paths for Railway compatibility)
+[
+  path.join(__dirname, 'data'),
+  path.join(__dirname, 'uploads', 'images'),
+  path.join(__dirname, 'uploads', 'brand')
+].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
